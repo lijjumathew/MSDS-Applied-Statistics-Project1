@@ -1,8 +1,8 @@
 # Stats2Project1
 
-==================================================================================
-From the Full Model the below are the significant predictors - Forward Selection
-==================================================================================
+
+## From the Full Model the below are the significant predictors - Forward Selection
+
 
 Adult.Mortality                 -1.730e-02  4.586e-03  -3.772 0.000263 ***
 infant.deaths                    3.647e-01  1.102e-01   3.309 0.001270 ** 
@@ -15,9 +15,9 @@ Residual standard error: 3.323 on 109 degrees of freedom
 Multiple R-squared:  0.8817,	Adjusted R-squared:  0.8622 
 AIC=690.1365  BIC=747.1771
 ASE=9.405684
-==================================================================================
-From the Full Model the below are the significant predictors - Backward Selection
-==================================================================================
+
+## From the Full Model the below are the significant predictors - Backward Selection
+
 
 Adult.Mortality                 -0.019037   0.004314  -4.413 2.24e-05 ***
 infant.deaths                    0.346787   0.091338   3.797 0.000231 ***
@@ -31,9 +31,9 @@ Residual standard error: 3.238 on 120 degrees of freedom
 Multiple R-squared:  0.8764,	Adjusted R-squared:  0.8692  
 AIC=673.8125  BIC=699.4808
 ASE=9.832157
-==================================================================================
-From the Full Model the below are the significant predictors - Stepwise Selection
-==================================================================================
+
+## From the Full Model the below are the significant predictors - Stepwise Selection
+
 
 Adult.Mortality                 -0.019037   0.004314  -4.413 2.24e-05 ***
 infant.deaths                    0.346787   0.091338   3.797 0.000231 ***
@@ -48,11 +48,9 @@ Multiple R-squared:  0.8764,	Adjusted R-squared:  0.8692
 AIC=673.8125  BIC=699.4808
 ASE=9.832157
 
-==================================================================================
 
-====================================================================================
-From the Reduced Model (stepwise selection) the below are the significant predictors 
-====================================================================================
+## From the Reduced Model (stepwise selection) the below are the significant predictors 
+
 
 Adult.Mortality                 -0.019037   0.004314  -4.413 2.24e-05 ***
 infant.deaths                    0.346787   0.091338   3.797 0.000231 ***
@@ -76,11 +74,11 @@ HIV.AIDS - 1.811741
 Income.composition.of.resources - 2.760631
 AIC=673.8125  BIC=699.4808
 ASE=9.832157
-==================================================================================
 
-==================================================================================
-Lasso Predictors run with all Predictors
-==================================================================================
+
+
+## Lasso Predictors run with all Predictors
+
 Adult.Mortality                 -0.0191246691
 Alcohol                          0.1290622227
 Total.expenditure                0.0559652197
@@ -90,9 +88,9 @@ thinness..1.19.years            -0.0494267615
 Income.composition.of.resources 34.2057499766
 
 
-====================================================================================
-From the Reduced Model (lasso selection) the below are the significant predictors 
-====================================================================================
+
+## From the Reduced Model (lasso selection) the below are the significant predictors 
+
 
 Adult.Mortality                 -0.019658   0.004567  -4.305 3.43e-05 ***
 Alcohol                          0.190417   0.089385   2.130   0.0352 *  
@@ -116,12 +114,12 @@ thinness..1.19.years - 1.544284
 Income.composition.of.resources - 3.018706
 AIC=686.4176  BIC=712.0859
 ASE=10.8496
-==================================================================================
 
 
-====================================================================================
-From the Linear model Life Expectancy for Developing vs Developed
-====================================================================================
+
+
+## From the Linear model Life Expectancy for Developing vs Developed
+
 (Intercept)        81.138      1.298  62.493  < 2e-16 ***
 StatusDeveloping  -11.636      1.429  -8.141 6.17e-14 ***
 
@@ -130,8 +128,8 @@ StatusDeveloping  -11.636      1.429  -8.141 6.17e-14 ***
 2. The average life expectancy in developed countries is estimated to be 81.138
 3. The average life expectancy in developing countries is 11.638 years less than developed countries.
 
-Final Models
-============
+## Final Models
+
 Life.expectancy ~ Adult.Mortality +  Total.expenditure +  Income.composition.of.resources
 Life.expectancy ~ Adult.Mortality +  Alcohol + Total.expenditure + HIV.AIDS + Income.composition.of.resources + thinness..1.19.years
 
