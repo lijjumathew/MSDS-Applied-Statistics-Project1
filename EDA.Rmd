@@ -1,0 +1,18 @@
+---
+title: "Project 1 EDA"
+output: html_notebook
+---
+
+
+```{r}
+plot(cars)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+

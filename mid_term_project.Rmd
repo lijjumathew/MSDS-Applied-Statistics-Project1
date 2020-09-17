@@ -1,0 +1,651 @@
+---
+title: "Life Expectancy Analysis"
+author: "Lijju Mathew, Blake Freeman, Aniketh Vankina"
+date: "June 4, 2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+install.packages("model4you")
+
+```{r library}
+library(dvmisc)
+library(rgl)
+library(Metrics)
+library(tidyverse)
+library(ggplot2)
+library(caTools)
+library(dplyr)
+library(magrittr)
+library(readr)
+library(survival)
+library(nlme)
+library(gridExtra) #grid.arrange()
+library(class)
+library(forcats)
+library(MASS)
+library(GGally)
+library(tidyr)
+library(maps)
+library(mapproj)
+library(stringr)
+library(rmarkdown)
+library(knitr)
+library(jsonlite)
+library(RCurl)
+library(class)
+library(httr)
+library(mice)
+library(corrplot)
+library(GoodmanKruskal) # GKtauDataframe()
+library(glmnet)
+library(car)
+library(moderndive) # get_regression_table()
+library(faraway)
+library(randomForest)
+library(e1071)
+library(naivebayes)
+library(caret)
+library(SuperLearner)
+library(psych)
+library(tm)
+library(VIM)
+library(model4you)
+
+
+```
+
+============
+OBJECTIVE 1
+============
+
+```{r datacleanup}
+who_data <- read.csv(file.choose())
+#who_data <- read.csv("/Users/lijjumathew/Library/Mobile Documents/com~apple~CloudDocs/Lijju/SMU/Courses/Applied Statistics/Project/Life Expectancy Data.csv")
+who_data <- who_data %>% filter(Year == 2014)
+head(who_data)
+summary(who_data)
+str(who_data)
+
+# Find the no of attributes with missing values
+sort(sapply(who_data, function(x) sum(is.na(x))), decreasing = T)
+
+#Missing data and percentage plot
+missing.values <- who_data %>%
+  gather(key = "key", value = "val") %>%
+  dplyr::mutate(isna = is.na(val)) %>%
+  dplyr::group_by(key) %>%
+  dplyr::mutate(total = n()) %>%
+  dplyr::group_by(key, total, isna)%>%
+  dplyr::summarise(num.isna = n())%>%
+  dplyr::mutate(pct = num.isna / total * 100)
+
+levels <- (missing.values %>% filter(isna == T) %>% arrange(desc(pct)))$key
+
+percentage.plot <- missing.values %>%
+      ggplot() + geom_bar(aes(x = reorder(key, desc(pct)), y = pct, fill=isna), stat = 'identity', alpha=0.8) +
+      scale_x_discrete(limits = levels) +
+      scale_fill_manual(name = "", values = c('steelblue', 'tomato3'), labels = c("Present", "Missing")) +
+      coord_flip() + 
+      labs(title = "Percentage of missing values", x = 'Variable', y = "% of missing values")
+percentage.plot
+
+tempData <- mice(who_data,m=1,maxit=0,meth='fastpmm',seed=500)
+who_imp <- complete(tempData,1)
+
+sort(sapply(who_imp, function(x) sum(is.na(x))), decreasing = T)
+glimpse(who_imp)
+```
+
+```{r split}
+set.seed(100)
+split_percent = .70
+trainIndices = sample(1:dim(who_imp)[1],round(split_percent * dim(who_imp)[1]))
+train = who_imp[trainIndices,]
+test = who_imp[-trainIndices,]
+summary(train)
+```
+
+
+dev.off()
+=======
+```{r}
+#For Git
+#EDA Aniketh f
+library(ISLR)
+library(dplyr)
+library(ggplot2)
+library(ggcorrplot)
+library(tidyr)
+library(magrittr)
+library(plyr)
+
+life = read.csv(file.choose(), header = TRUE)
+summary(life)
+dplyr::glimpse(life)
+attach(life)
+#Life expectancy based on developing and developed countries
+t(aggregate(Life.expectancy ~ Status, data = life, summary))
+
+
+#Does various predicting factors which has been chosen initially really affect the Life expectancy? What are the predicting variables actually affecting the life expectancy?
+library(car)
+who_imp = who_imp[,-3]
+who_imp = who_imp[,-1]
+full.model = lm(Life.expectancy~., data = who_imp)
+vif(full.model)[,3]^2
+
+alias(lm(Life.expectancy~., data = who_imp))
+
+#Should a country having a lower life expectancy value(<65) increase its healthcare expenditure in order to improve its average lifespan?
+life %>% select(Country, Life.expectancy, Total.expenditure, percentage.expenditure) %>% filter(Life.expectancy < 65) 
+
+#How does Infant and Adult mortality rates affect life expectancy?
+par(mfrow = c(1,2))
+plot(Adult.Mortality, Life.expectancy, xlab = "Adult Mortality", ylab = "Life Expectancy")
+new = data.frame(Adult.Mortality = seq(30, 600,1))
+lines(seq(30,600,1), predict(lm(Life.expectancy~Adult.Mortality), newdata = new), col = "red", lwd = 4)
+
+plot(infant.deaths, Life.expectancy)
+new2 = data.frame(infant.deaths = seq(30,600,1))
+lines(seq(30,600,1), predict(lm(Life.expectancy~infant.deaths), newdata = new2), col = "red", lwd = 4)
+#Does Life Expectancy has positive or negative correlation with eating habits, lifestyle, exercise, smoking, drinking alcohol etc.
+
+#What is the impact of schooling on the lifespan of humans?
+plot(Schooling, Life.expectancy, xlab = "Schooling", ylab = "Life Expectancy")
+new3 = data_frame(Schooling = seq(1, 30,1))
+lines(seq(1,30,1), predict(lm(Life.expectancy~Schooling), newdata = new3), col = "red", lwd = 4) 
+#There is a postive corelation between life expectancy and schooling
+
+#Does Life Expectancy have positive or negative relationship with drinking alcohol?
+plot(Alcohol, Life.expectancy, xlab = "Alcohol", ylab = "Life Expectancy")
+new3 = data_frame(Alcohol = seq(0.1, 30,.1))
+lines(seq(0.1,30,.1), predict(lm(Life.expectancy~Alcohol), newdata = new3), col = "red", lwd = 4) 
+#Do densely populated countries tend to have lower life expectancy?
+
+#What is the impact of Immunization coverage on life Expectancy?
+
+
+```
+
+
+```{r EDA EDA EDA}
+summary(who_data)
+who_imp_conti <- who_imp[, !sapply(who_imp, is.factor)]
+who_imp_categ <- who_imp[, sapply(who_imp, is.factor)]
+
+# Box plots to find outliers
+boxplot(who_imp_conti[,2:20])
+boxplot(who_imp_conti$Population)
+who_imp[which.max(who_imp$Population),]
+
+# ScatterPlot
+head(who_imp_conti)
+pairs(who_imp_conti[,2:20], pch=19)
+
+# Computing the p value of correlations
+cor.mtest <- function(mat, ...) {
+    mat <- as.matrix(mat)
+    n <- ncol(mat)
+    p.mat<- matrix(NA, n, n)
+    diag(p.mat) <- 0
+    for (i in 1:(n - 1)) {
+        for (j in (i + 1):n) {
+            tmp <- cor.test(mat[, i], mat[, j], ...)
+            p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
+        }
+    }
+  colnames(p.mat) <- rownames(p.mat) <- colnames(mat)
+  p.mat
+}
+p.mat <- cor.mtest(who_imp_conti[,2:20])
+correlation <- cor(who_imp_conti[,2:20])
+# Correlation plot with significance level of 0.05
+corrplot(correlation, type="upper", order="hclust", p.mat = p.mat, sig.level = 0.05)
+
+cat_cor<- GKtauDataframe(who_imp_categ)
+plot(cat_cor, corrColors = "blue")
+```
+
+EDA
+1. Out of total 183 countries, 151 countries are developing  and 32 are developed
+2. Outliers - Population of India seemed as an outlier, but that is a fact.
+3. Correlation 
+    Percentage.expenditure - GDP
+    Polio - Hepatitis.B, Diptheria
+    Life.expectancy - Income.composition.of.resources, Schooling, Adult.Mortality, HIV.AIDS 
+    Income.composition.of.resources - Schooling, Adult.Mortality, HIV.AIDS 
+    Schooling - Adult.Mortality
+    thinness..1.19.years - thinness..5.9.years
+    Population - infant.deaths, under.five.deaths
+    infant.deaths - under.five.deaths
+
+dev.off()
+
+```{r Full Model with all predictors}
+par(mfrow=c(2,2))
+model_full = lm(Life.expectancy ~ Adult.Mortality + infant.deaths + Alcohol + percentage.expenditure + Hepatitis.B + 
+                Measles + BMI + under.five.deaths + Polio + Total.expenditure + Diphtheria + HIV.AIDS + GDP + 
+                Population + thinness..1.19.years + thinness.5.9.years + Income.composition.of.resources + 
+                Schooling,data=train)
+scope_formula = formula(model_full)
+scope_formula
+model_full_selection = step(object=model_full, scope=scope_formula, direction="backward")
+summary(model_full_selection)
+plot(model_full_selection)
+
+model_full_selection_aic = AIC(model_full_selection)
+model_full_selection_bic = BIC(model_full_selection)
+model_full_selection_aic # AIC of the model using forward selection method
+model_full_selection_bic
+ASE=rss(model_full_selection)/nrow(train)
+ASE
+```
+==================================================================================
+From the Full Model the below are the significant predictors - Forward Selection
+==================================================================================
+
+Adult.Mortality                 -1.730e-02  4.586e-03  -3.772 0.000263 ***
+infant.deaths                    3.647e-01  1.102e-01   3.309 0.001270 ** 
+Alcohol                          1.928e-01  9.368e-02   2.058 0.041997 *  
+under.five.deaths               -2.948e-01  8.244e-02  -3.576 0.000521 ***
+HIV.AIDS                        -5.697e-01  2.959e-01  -1.926 0.056758 .  
+Income.composition.of.resources  3.141e+01  5.572e+00   5.638 1.37e-07 ***
+
+Residual standard error: 3.323 on 109 degrees of freedom
+Multiple R-squared:  0.8817,	Adjusted R-squared:  0.8622 
+AIC=690.1365  BIC=747.1771
+==================================================================================
+From the Full Model the below are the significant predictors - Backward Selection
+==================================================================================
+
+Adult.Mortality                 -0.019037   0.004314  -4.413 2.24e-05 ***
+infant.deaths                    0.346787   0.091338   3.797 0.000231 ***
+Alcohol                          0.190732   0.084952   2.245 0.026588 *  
+under.five.deaths               -0.278161   0.072770  -3.822 0.000211 ***
+Total.expenditure                0.208568   0.106121   1.965 0.051680 .  
+HIV.AIDS                        -0.542359   0.271797  -1.995 0.048258 *  
+Income.composition.of.resources 32.084721   3.092474  10.375  < 2e-16 ***
+
+Residual standard error: 3.238 on 120 degrees of freedom
+Multiple R-squared:  0.8764,	Adjusted R-squared:  0.8692  
+AIC=673.8125  BIC=699.4808
+==================================================================================
+From the Full Model the below are the significant predictors - Stepwise Selection
+==================================================================================
+
+Adult.Mortality                 -0.019037   0.004314  -4.413 2.24e-05 ***
+infant.deaths                    0.346787   0.091338   3.797 0.000231 ***
+Alcohol                          0.190732   0.084952   2.245 0.026588 *  
+under.five.deaths               -0.278161   0.072770  -3.822 0.000211 ***
+Total.expenditure                0.208568   0.106121   1.965 0.051680 .  
+HIV.AIDS                        -0.542359   0.271797  -1.995 0.048258 *  
+Income.composition.of.resources 32.084721   3.092474  10.375  < 2e-16 ***
+
+Residual standard error: 3.238 on 120 degrees of freedom
+Multiple R-squared:  0.8764,	Adjusted R-squared:  0.8692
+AIC=673.8125  BIC=699.4808
+==================================================================================
+
+dev.off()
+```{r reduced model1- from manual selection, echo=FALSE}
+par(mfrow=c(2,2))
+reduced_model_1 <- lm(Life.expectancy~Schooling+Income.composition.of.resources+Alcohol+ HIV.AIDS, data=train)
+get_regression_table(reduced_model_1)
+summary(reduced_model_1)
+# Model validation using test set
+test$Life.expectancy.Predicted <- predict(reduced_model_1, subset(test,select=-c(Country,Life.expectancy)))
+test.correlation <- round(cor(test$Life.expectancy, test$Life.expectancy.Predicted),4)
+test.RMSE <- round(sqrt(mean(test$Life.expectancy-test$Life.expectancy.Predicted)^2),4)
+c(correlation = test.correlation, RMSE = test.RMSE)
+vif(reduced_model_1)
+
+reduced_model_1_aic = AIC(reduced_model_1)
+reduced_model_1_bic = BIC(reduced_model_1)
+reduced_model_1_aic # AIC of the model using forward selection method
+reduced_model_1_bic
+
+plot(reduced_model_1)
+# Scatterplot
+pairs(data.frame(train$Life.expectancy,train$Schooling,train$Alcohol,train$Income.composition.of.resources,train$HIV.AIDS), pch=19)
+ASE=rss(reduced_model_1)/nrow(train)
+ASE
+```
+
+From the Reduced Model (manual selection) the below are the significant predictors 
+1.Income.composition.of.resources
+2.HIV.AIDS
+Residual standard error: 3.708 on 123 degrees of freedom
+Multiple R-squared:  0.8159,	Adjusted R-squared:   0.81 
+correlation        RMSE 
+     0.8378      0.5866 
+VIF
+Schooling = 6.275441                 
+Income.composition.of.resources = 6.636833                      
+Alcohol = 1.571182         
+HIV.AIDS = 1.254619
+AIC=705.623  BIC=722.7352
+
+dev.off()
+
+```{r reduced model2 - from stepwise selection, echo=FALSE}
+par(mfrow=c(2,2))
+reduced_model_2 <- lm(Life.expectancy~Adult.Mortality+infant.deaths+Alcohol+under.five.deaths+Total.expenditure+ HIV.AIDS+Income.composition.of.resources, data=train)
+get_regression_table(reduced_model_2)
+summary(reduced_model_2)
+# Model validation using test set
+test$Life.expectancy.Predicted <- predict(reduced_model_2, subset(test,select=-c(Country,Life.expectancy)))
+test.correlation <- round(cor(test$Life.expectancy, test$Life.expectancy.Predicted),4)
+test.RMSE <- round(sqrt(mean(test$Life.expectancy-test$Life.expectancy.Predicted)^2),4)
+c(correlation = test.correlation, RMSE = test.RMSE)
+vif(reduced_model_2)
+plot(reduced_model_2)
+reduced_model_2_aic = AIC(reduced_model_2)
+reduced_model_2_bic = BIC(reduced_model_2)
+reduced_model_2_aic # AIC of the model using forward selection method
+reduced_model_2_bic
+# Scatterplot
+pairs(data.frame(train$Life.expectancy, train$Adult.Mortality,train$Total.expenditure,train$Income.composition.of.resources,train$HIV.AIDS), pch=19)
+ASE=rss(reduced_model_2)/nrow(train)
+ASE
+```
+==================================================================================
+From the Reduced Model (stepwise selection) the below are the significant predictors 
+==================================================================================
+
+Adult.Mortality                 -0.019037   0.004314  -4.413 2.24e-05 ***
+infant.deaths                    0.346787   0.091338   3.797 0.000231 ***
+Alcohol                          0.190732   0.084952   2.245 0.026588 *  
+under.five.deaths               -0.278161   0.072770  -3.822 0.000211 ***
+Total.expenditure                0.208568   0.106121   1.965 0.051680 .  
+HIV.AIDS                        -0.542359   0.271797  -1.995 0.048258 *  
+Income.composition.of.resources 32.084721   3.092474  10.375  < 2e-16 ***
+
+Residual standard error: 3.238 on 120 degrees of freedom
+Multiple R-squared:  0.8764,	Adjusted R-squared:  0.8692 
+correlation        RMSE 
+     0.7630      0.4363 
+VIF
+Adult.Mortality - 2.823806 
+infant.deaths - 800.207011
+Alcohol - 1.497704
+under.five.deaths - 805.376827
+Total.expenditure - 1.116503 
+HIV.AIDS - 1.811741
+Income.composition.of.resources - 2.760631
+AIC=673.8125  BIC=699.4808
+==================================================================================
+
+dev.off()
+
+```{r LASSO,  echo=FALSE}
+set.seed(100)
+#Formatting data for GLM net
+x=model.matrix(Life.expectancy ~ Adult.Mortality + infant.deaths + Alcohol + percentage.expenditure + Hepatitis.B + 
+                Measles + BMI + under.five.deaths + Polio + Total.expenditure + Diphtheria + HIV.AIDS + GDP + 
+                Population + thinness..1.19.years + thinness.5.9.years + Income.composition.of.resources + 
+                Schooling, train)[,-1]
+Life.expectancy~Schooling+Income.composition.of.resources+Total.expenditure+percentage.expenditure+BMI+Alcohol
+y=train$Life.expectancy
+
+xtest<-model.matrix(Life.expectancy ~ Adult.Mortality + infant.deaths + Alcohol + percentage.expenditure + Hepatitis.B + 
+                Measles + BMI + under.five.deaths + Polio + Total.expenditure + Diphtheria + HIV.AIDS + GDP + 
+                Population + thinness..1.19.years + thinness.5.9.years + Income.composition.of.resources + 
+                Schooling,test)[,-1]
+ytest<-test$Life.expectancy
+
+grid=10^seq(10,-2, length =100)
+lasso.mod=glmnet(x,y,alpha=1, lambda =grid)
+
+cv.out=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
+plot(cv.out)
+bestlambda<-cv.out$lambda.min  #Optimal penalty parameter.  You can make this call visually.
+lasso.pred=predict (lasso.mod ,s=bestlambda ,newx=xtest)
+
+testMSE_LASSO<-mean((ytest-lasso.pred)^2)
+testMSE_LASSO
+coef(lasso.mod,s=bestlambda)
+```
+================
+Lasso Predictors 
+================
+Adult.Mortality                 -0.0191246691
+Alcohol                          0.1290622227
+Total.expenditure                0.0559652197
+Diphtheria                       0.0002095938
+HIV.AIDS                        -0.4152214620
+thinness..1.19.years            -0.0494267615
+Income.composition.of.resources 34.2057499766
+
+
+dev.off()
+
+```{r reduced model3 - from Lasso selection, echo=FALSE}
+par(mfrow=c(2,2))
+reduced_model_3 <- lm(Life.expectancy ~ Adult.Mortality + Alcohol + Total.expenditure + Diphtheria + HIV.AIDS + thinness..1.19.years + Income.composition.of.resources,data=train)
+get_regression_table(reduced_model_3)
+summary(reduced_model_3)
+# Model validation using test set
+test$Life.expectancy.Predicted <- predict(reduced_model_3, subset(test,select=-c(Country,Life.expectancy)))
+test.correlation <- round(cor(test$Life.expectancy, test$Life.expectancy.Predicted),4)
+test.RMSE <- round(sqrt(mean(test$Life.expectancy-test$Life.expectancy.Predicted)^2),4)
+c(correlation = test.correlation, RMSE = test.RMSE)
+vif(reduced_model_3)
+plot(reduced_model_3)
+reduced_model_3_aic = AIC(reduced_model_3)
+reduced_model_3_bic = BIC(reduced_model_3)
+reduced_model_3_aic # AIC of the model using forward selection method
+reduced_model_3_bic
+summary(reduced_model_3)
+ASE=rss(reduced_model_3)/nrow(train)
+ASE
+```
+
+dev.off()
+
+
+====================================================================================
+From the Reduced Model (lasso selection) the below are the significant predictors 
+====================================================================================
+
+Adult.Mortality                 -0.019658   0.004567  -4.305 3.43e-05 ***
+Alcohol                          0.190417   0.089385   2.130   0.0352 *  
+Total.expenditure                0.158346   0.114060   1.388   0.1676    
+Diphtheria                       0.014960   0.014128   1.059   0.2918    
+HIV.AIDS                        -0.631963   0.284766  -2.219   0.0284 *  
+thinness..1.19.years            -0.112665   0.096625  -1.166   0.2459    
+Income.composition.of.resources 33.338972   3.397006   9.814  < 2e-16 ***
+
+Residual standard error: 3.402 on 120 degrees of freedom
+Multiple R-squared:  0.8636,	Adjusted R-squared:  0.8556 
+correlation        RMSE 
+     0.8026      0.2577
+VIF
+Adult.Mortality - 2.867694 
+Alcohol - 1.502603
+Total.expenditure - 1.168843 
+Diphtheria - 1.149265
+HIV.AIDS - 1.802256
+thinness..1.19.years - 1.544284
+Income.composition.of.resources - 3.018706
+AIC=686.4176  BIC=712.0859
+==================================================================================
+
+```{r model4 - Life Expectancy differences between developed and devloping countries, echo=FALSE}
+par(mfrow=c(2,2))
+reduced_model_4 <- lm(Life.expectancy ~ Status ,data=who_data)
+get_regression_table(reduced_model_4)
+summary(reduced_model_4)
+```
+====================================================================================
+From the Linear model Life Expectancy for Developing vs Developed
+====================================================================================
+(Intercept)        81.138      1.298  62.493  < 2e-16 ***
+StatusDeveloping  -11.636      1.429  -8.141 6.17e-14 ***
+
+1. The P value of dummy variable StatusDeveloping is very significant suggesting that 
+  there is statistical evidence of difference in average life expectancy between developing and developed countries.
+2. The average life expectancy in developed countries is estimated to be 81.138
+3. The average life expectancy in developing countries is 11.638 years less than developed countries.
+
+
+dev.off()
+
+```{r Final Model1 , echo=FALSE}
+set.seed(100)
+par(mfrow=c(2,2))
+final_model1 <- lm(Life.expectancy ~ Adult.Mortality +  Alcohol + Total.expenditure + HIV.AIDS + Income.composition.of.resources + thinness..1.19.years,data=train)
+get_regression_table(final_model1)
+summary(final_model1)
+# Model validation using test set
+test$Life.expectancy.Predicted <- predict(final_model1, subset(test,select=-c(Life.expectancy)))
+test.correlation <- round(cor(test$Life.expectancy, test$Life.expectancy.Predicted),4)
+test.RMSE <- round(sqrt(mean(test$Life.expectancy-test$Life.expectancy.Predicted)^2),4)
+c(correlation = test.correlation, RMSE = test.RMSE)
+vif(final_model1)
+plot(final_model1)
+final_model1_aic = AIC(final_model1)
+final_model1_bic = BIC(final_model1)
+final_model1_aic # AIC of the model using forward selection method
+final_model1_bic
+summary(final_model1)
+ASE=rss(final_model1)/nrow(train)
+ASE
+
+```
+
+
+
+```{r Final Model2 , echo=FALSE}
+par(mfrow=c(2,2))
+final_model2 <- lm(Life.expectancy ~ Adult.Mortality +  Total.expenditure + Income.composition.of.resources ,data=train)
+get_regression_table(final_model2)
+summary(final_model2)
+# Model validation using test set
+test$Life.expectancy.Predicted <- predict(final_model2, subset(test,select=-c(Life.expectancy)), interval="confidence")
+test.correlation <- round(cor(test$Life.expectancy, test$Life.expectancy.Predicted),4)
+test.RMSE <- round(sqrt(mean(test$Life.expectancy-test$Life.expectancy.Predicted)^2),4)
+c(correlation = test.correlation, RMSE = test.RMSE)
+vif(final_model2)
+plot(final_model2)
+final_model2_aic = AIC(final_model2)
+final_model2_bic = BIC(final_model2)
+final_model2_aic # AIC of the model using forward selection method
+final_model2_bic
+summary(final_model2)
+ASE=rss(final_model2)/nrow(train)
+ASE
+```
+
+
+dev.off()
+
+===========
+OBJECTIVE 2
+===========
+
+```{r knn with all the predictors}
+# Train model with knn and get importance of predictors
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+set.seed(100)
+model.knn <- train( Life.expectancy ~ ., data=who_imp[,-c(2)], method="knn", trControl=control)
+#Top 10 predictor ranking
+importance.knn <- varImp(model.knn, scale=FALSE)
+rank.knn <- importance.knn$importance
+write.csv(rank.knn, "rank.knn.csv")
+rank.knn <- read.csv("rank.knn.csv", header=TRUE)
+colnames(rank.knn) <- c("Predictors", "Importance")
+rank.knn <- rank.knn[order(rank.knn$Importance, decreasing = TRUE),]
+ggplot(rank.knn[1:20,], aes(x=reorder(Predictors, Importance),y=Importance)) + geom_bar(stat = "identity") + coord_flip() + labs(title="Importance of Predictors", x="Predictors", y="Importance") +theme(axis.text.x=element_text(hjust=0.5, vjust=0.5, size = 12))+theme(axis.text.y=element_text(size = 12))
+``` 
+
+
+```{r knn with all the predictors}
+# Train model with knn and get importance of predictors
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+set.seed(100)
+model.knn <- train(Life.expectancy ~ Adult.Mortality + infant.deaths + Alcohol + percentage.expenditure + Hepatitis.B + 
+                Measles + BMI + under.five.deaths + Polio + Total.expenditure + Diphtheria + HIV.AIDS + GDP + 
+                Population + thinness..1.19.years + thinness.5.9.years + Income.composition.of.resources + 
+                Schooling, data=who_imp[,-c(2)], method="knn", trControl=control)
+#Top 10 predictor ranking
+importance.knn <- varImp(model.knn, scale=FALSE)
+rank.knn <- importance.knn$importance
+write.csv(rank.knn, "rank.knn.csv")
+rank.knn <- read.csv("rank.knn.csv", header=TRUE)
+colnames(rank.knn) <- c("Predictors", "Importance")
+rank.knn <- rank.knn[order(rank.knn$Importance, decreasing = TRUE),]
+ggplot(rank.knn[1:20,], aes(x=reorder(Predictors, Importance),y=Importance)) + geom_bar(stat = "identity") + coord_flip() + labs(title="Importance of Predictors", x="Predictors", y="Importance") +theme(axis.text.x=element_text(hjust=0.5, vjust=0.5, size = 12))+theme(axis.text.y=element_text(size = 12))
+``` 
+
+Life.expectancy ~ Adult.Mortality +  Total.expenditure +  Income.composition.of.resources
+Adult.Mortality +  Alcohol + Total.expenditure + HIV.AIDS + Income.composition.of.resources + thinness..1.19.years
+
+```{r}
+library(dplyr)
+lifeReduced = who_imp %>% select(Life.expectancy, Adult.Mortality, Total.expenditure, Income.composition.of.resources)
+lifeFull = who_imp %>% select(Life.expectancy, Adult.Mortality, Alcohol, Total.expenditure, HIV.AIDS, Income.composition.of.resources, thinness..1.19.years)
+```
+
+```{r knn life reduced}
+set.seed(100)
+iterations = 10
+numks = 30
+splitPerc = .70
+masterAcc = matrix(nrow = iterations, ncol = numks)
+for(j in 1:iterations)
+{
+   trainIndices = sample(1:dim(lifeReduced)[1],round(splitPerc * dim(lifeReduced)[1]))
+    train = lifeReduced[trainIndices,]
+    test = lifeReduced[-trainIndices,]
+  for(i in 1:numks)
+  {
+    classifications = knn(train[,c(2,3,4)],test[,c(2,3,4)],train$Life.expectancy, prob = TRUE, k = i)
+    u <- union(classifications,test$Life.expectancy)
+    t <- table(factor(classifications, u), factor(test$Life.expectancy, u))
+    CM = confusionMatrix(t)
+    masterAcc[j,i] = CM$overall[1]
+  }
+}
+MeanAcc = colMeans(masterAcc)
+plot(seq(1,numks,1),MeanAcc, type = "l")
+which.max(MeanAcc)
+max(MeanAcc)
+```
+
+
+```{r knn life full}
+set.seed(100)
+iterations = 10
+numks = 30
+splitPerc = .70
+masterAcc = matrix(nrow = iterations, ncol = numks)
+for(j in 1:iterations)
+{
+   trainIndices = sample(1:dim(lifeFull)[1],round(splitPerc * dim(lifeFull)[1]))
+    train = lifeFull[trainIndices,]
+    test = lifeFull[-trainIndices,]
+  for(i in 1:numks)
+  {
+    classifications = knn(train[,c(2,3,4,5,6,7)],test[,c(2,3,4,5,6,7)],train$Life.expectancy, prob = TRUE, k = i)
+    u <- union(classifications,test$Life.expectancy)
+    t <- table(factor(classifications, u), factor(test$Life.expectancy, u))
+    CM = confusionMatrix(t)
+    masterAcc[j,i] = CM$overall[1]
+  }
+}
+MeanAcc = colMeans(masterAcc)
+plot(seq(1,numks,1),MeanAcc, type = "l")
+which.max(MeanAcc)
+max(MeanAcc)
+```
+
+
+
